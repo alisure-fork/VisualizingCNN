@@ -1,60 +1,49 @@
-import torch
-import torch.nn as nn
-from torch.autograd import Variable
-from torchvision.transforms import transforms
-import numpy as np
+import os
 import cv2
-from functools import partial
+import torch
 import matplotlib
-matplotlib.use('agg')
-import matplotlib.pyplot as plt
-
+import numpy as np
+import torch.nn as nn
 from models import Vgg16Conv
+from functools import partial
 from models import Vgg16Deconv
+import matplotlib.pyplot as plt
+from alisuretool.Tools import Tools
+from torch.autograd import Variable
 from utils import decode_predictions
+from torchvision.transforms import transforms
+
 
 def load_images(img_path):
-    # imread from img_path
     img = cv2.imread(img_path)
     img = cv2.resize(img, (224, 224))
 
-    # pytorch must normalize the pic by 
-    # mean = [0.485, 0.456, 0.406]
-    # std = [0.229, 0.224, 0.225]
-    transform = transforms.Compose([
-        transforms.ToTensor(),
-        transforms.Normalize(mean=[0.485, 0.456, 0.406],std=[0.229, 0.224, 0.225])
-        ])
+    transform = transforms.Compose([transforms.ToTensor(),
+                                    transforms.Normalize(mean=[0.485, 0.456, 0.406],std=[0.229, 0.224, 0.225])])
     
     img = transform(img)
     img.unsqueeze_(0)
-    #img_s = img.numpy()
-    #img_s = np.transpose(img_s, (1, 2, 0))
-    #cv2.imshow("test img", img_s)
-    #cv2.waitKey()
     return img
 
+
 def store(model):
-    """
-    make hook for feature map
-    """
     def hook(module, input, output, key):
         if isinstance(module, nn.MaxPool2d):
            model.feature_maps[key] = output[0]
            model.pool_locs[key] = output[1]
         else:
            model.feature_maps[key] = output
+        pass
     
     for idx, layer in enumerate(model._modules.get('features')):    
         # _modules returns an OrderedDict
         layer.register_forward_hook(partial(hook, key=idx))
+        pass
+    pass
+
 
 def vis_layer(layer, vgg16_conv, vgg16_deconv):
-    """
-    visualing the layer deconv result
-    """
     num_feat = vgg16_conv.feature_maps[layer].shape[1]
-    
     # set other feature map activations to zero
     new_feat_map = vgg16_conv.feature_maps[layer].clone()
 
@@ -64,6 +53,7 @@ def vis_layer(layer, vgg16_conv, vgg16_deconv):
         choose_map = new_feat_map[0, i, :, :]
         activation = torch.max(choose_map)
         act_lst.append(activation.item())
+        pass
 
     act_lst = np.array(act_lst)
     mark = np.argmax(act_lst)
@@ -78,11 +68,10 @@ def vis_layer(layer, vgg16_conv, vgg16_deconv):
         new_feat_map[:, :mark, :, :] = 0
         if mark != vgg16_conv.feature_maps[layer].shape[1] - 1:
             new_feat_map[:, mark + 1:, :, :] = 0
+            pass
+        pass
     
-    choose_map = torch.where(choose_map==max_activation,
-            choose_map,
-            torch.zeros(choose_map.shape)
-            )
+    choose_map = torch.where(choose_map==max_activation, choose_map, torch.zeros(choose_map.shape))
 
     # make zeros for ther activations
     new_feat_map[0, mark, :, :] = choose_map
@@ -99,11 +88,10 @@ def vis_layer(layer, vgg16_conv, vgg16_deconv):
     # cv2.imshow('reconstruction img ' + str(layer), new_img)
     # cv2.waitKey()
     return new_img, int(max_activation)
-    
+
 
 if __name__ == '__main__':
-    
-    img_path = './data/cat.jpg'
+    img_path = './data/1.jpg'
 
     # forward processing
     img = load_images(img_path)
@@ -112,9 +100,7 @@ if __name__ == '__main__':
     store(vgg16_conv)
     conv_output = vgg16_conv(img)
     pool_locs = vgg16_conv.pool_locs
-    print('Predicted:', decode_predictions(conv_output, top=3)[0])
-    
-
+    Tools.print('Predicted: {}'.format(decode_predictions(conv_output, top=3)[0]))
     
     # backward processing
     vgg16_deconv = Vgg16Deconv()
@@ -126,14 +112,17 @@ if __name__ == '__main__':
     img = cv2.resize(img, (224, 224))
     plt.imshow(img)    
     for idx, layer in enumerate([14, 17, 19, 21, 24, 26, 28]):
-    # for idx, layer in enumerate(vgg16_conv.conv_layer_indices):        
+    # for idx, layer in enumerate(vgg16_conv.conv_layer_indices):
         plt.subplot(2, 4, idx+2)
         img, activation = vis_layer(layer, vgg16_conv, vgg16_deconv)
-        plt.title(f'{layer} layer, the max activations is {activation}')
+        plt.title('{} layer, the max activations is {}'.format(layer,activation ))
         # img = img[112:,112:,:]
         plt.imshow(img)
         # plt.colorbar()
+        pass
 
     # plt.show()
-    plt.savefig('result.jpg')
-    print('result picture has save at ./result.jpg')
+    result_file_name = Tools.new_dir('./result/{}'.format(os.path.basename(img_path)))
+    plt.savefig(result_file_name)
+    Tools.print('result picture has save at {}'.format(result_file_name))
+    pass

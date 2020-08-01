@@ -1,9 +1,9 @@
 import torch
+import torchvision
 import torch.nn as nn
 import torchvision.models as models
-import torchvision
-
 from collections import OrderedDict
+
 
 class Vgg16Conv(nn.Module):
     """
@@ -11,28 +11,21 @@ class Vgg16Conv(nn.Module):
     """
 
     def __init__(self, num_cls=1000):
-        """
-        Input
-            number of class, default is 1k.
-        """
         super(Vgg16Conv, self).__init__()
     
         self.features = nn.Sequential(
-            # conv1
             nn.Conv2d(3, 64, 3, padding=1),
             nn.ReLU(),
             nn.Conv2d(64, 64, 3, padding=1),
             nn.ReLU(),
             nn.MaxPool2d(2, stride=2, return_indices=True),
-            
-            # conv2
+
             nn.Conv2d(64, 128, 3, padding=1),
             nn.ReLU(),
             nn.Conv2d(128, 128, 3, padding=1),
             nn.ReLU(),
             nn.MaxPool2d(2, stride=2, return_indices=True),
 
-            # conv3
             nn.Conv2d(128, 256, 3, padding=1),
             nn.ReLU(),
             nn.Conv2d(256, 256, 3, padding=1),
@@ -41,7 +34,6 @@ class Vgg16Conv(nn.Module):
             nn.ReLU(),
             nn.MaxPool2d(2, stride=2, return_indices=True),
 
-            # conv4
             nn.Conv2d(256, 512, 3, padding=1),
             nn.ReLU(),
             nn.Conv2d(512, 512, 3, padding=1),
@@ -50,7 +42,6 @@ class Vgg16Conv(nn.Module):
             nn.ReLU(),
             nn.MaxPool2d(2, stride=2, return_indices=True),
 
-            # conv5
             nn.Conv2d(512, 512, 3, padding=1),
             nn.ReLU(),
             nn.Conv2d(512, 512, 3, padding=1),
@@ -71,30 +62,27 @@ class Vgg16Conv(nn.Module):
             nn.Softmax(dim=1)
         )
 
-        # index of conv
         self.conv_layer_indices = [0, 2, 5, 7, 10, 12, 14, 17, 19, 21, 24, 26, 28]
-        # feature maps
         self.feature_maps = OrderedDict()
-        # switch
         self.pool_locs = OrderedDict()
-        # initial weight
         self.init_weights()
+        pass
 
     def init_weights(self):
-        """
-        initial weights from preptrained model by vgg16
-        """
         vgg16_pretrained = models.vgg16(pretrained=True)
         # fine-tune Conv2d
         for idx, layer in enumerate(vgg16_pretrained.features):
             if isinstance(layer, nn.Conv2d):
                 self.features[idx].weight.data = layer.weight.data
                 self.features[idx].bias.data = layer.bias.data
+            pass
         # fine-tune Linear
         for idx, layer in enumerate(vgg16_pretrained.classifier):
             if isinstance(layer, nn.Linear):
                 self.classifier[idx].weight.data = layer.weight.data
                 self.classifier[idx].bias.data = layer.bias.data
+            pass
+        pass
     
     def check(self):
         model = models.vgg16(pretrained=True)
@@ -112,6 +100,9 @@ class Vgg16Conv(nn.Module):
         x = x.view(x.size()[0], -1)
         output = self.classifier(x)
         return output
+
+    pass
+
 
 if __name__ == '__main__':
     model = models.vgg16(pretrained=True)

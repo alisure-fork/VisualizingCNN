@@ -1,8 +1,8 @@
+import sys
 import torch
 import torch.nn as nn
 import torchvision.models as models
 
-import sys
 
 class Vgg16Deconv(nn.Module):
     """
@@ -54,17 +54,11 @@ class Vgg16Deconv(nn.Module):
             nn.ConvTranspose2d(64, 3, 3, padding=1)    
         )
 
-        self.conv2deconv_indices = {
-                0:30, 2:28, 5:25, 7:23,
-                10:20, 12:18, 14:16, 17:13,
-                19:11, 21:9, 24:6, 26:4, 28:2
-                }
-
-        self.unpool2pool_indices = {
-                26:4, 21:9, 14:16, 7:23, 0:30
-                }
+        self.conv2deconv_indices = {0:30, 2:28, 5:25, 7:23, 10:20, 12:18, 14:16, 17:13, 19:11, 21:9, 24:6, 26:4, 28:2}
+        self.unpool2pool_indices = {26:4, 21:9, 14:16, 7:23, 0:30}
 
         self.init_weight()
+        pass
 
     def init_weight(self):
         vgg16_pretrained = models.vgg16(pretrained=True)
@@ -73,7 +67,9 @@ class Vgg16Deconv(nn.Module):
                 self.features[self.conv2deconv_indices[idx]].weight.data = layer.weight.data
                 #self.features[self.conv2deconv_indices[idx]].bias.data\
                 # = layer.bias.data
-        
+            pass
+        pass
+
     def forward(self, x, layer, activation_idx, pool_locs):
         if layer in self.conv2deconv_indices:
             start_idx = self.conv2deconv_indices[layer]
@@ -87,3 +83,5 @@ class Vgg16Deconv(nn.Module):
             else:
                 x = self.features[idx](x)
         return x
+
+    pass
